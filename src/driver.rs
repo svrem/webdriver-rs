@@ -27,8 +27,14 @@ impl Driver {
         crate::requests::send_request(method, ("127.0.0.1", self.port), &formatted_path, body)
     }
 
-    pub fn new(port: u16) -> Driver {
-        Driver { port, session_id: None }
+    pub fn new(port: u16) -> Result<Driver, &str> {
+        let res = crate::requests::send_request(Method::GET, ("127.0.0.1", port), "/", json!({}));
+
+        if res.is_err() {
+            return Err("Failed to connect to driver");
+        }
+
+        Ok(Driver { port, session_id: None })
     }
 
     pub fn new_session(&mut self) -> Result<(), &str> {
