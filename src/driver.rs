@@ -37,7 +37,7 @@ impl Driver {
         Ok(Driver { port, session_id: None })
     }
 
-    pub fn new_session(&mut self) -> Result<(), &str> {
+    pub fn new_session(&mut self) -> Result<(), &'static str> {
         let body = json!({
             "desiredCapabilities": {
                 "goog:chromeOptions": {
@@ -62,7 +62,7 @@ impl Driver {
         };
     }
 
-    pub fn navigate_to(&self, url: &str) -> Result<(), &str> {
+    pub fn navigate_to(&self, url: &str) -> Result<(), &'static str> {
         let res = self.send_request(Method::POST, "/url", json!({
             "url": url
         }));
@@ -74,7 +74,7 @@ impl Driver {
         Ok(())
     }
 
-    pub fn find_element_by_css_selector_with_retries(&self, selector: &str, retries: u8) -> Result<Element, &str> {
+    pub fn find_element_by_css_selector_with_retries(&self, selector: &str, retries: u8) -> Result<Element, &'static str> {
         for _ in 0..retries {
             let res = self.find_element_by_css_selector(selector);
             if res.is_ok() {
@@ -86,7 +86,7 @@ impl Driver {
         Err("Failed to find element")
     }
 
-    pub fn get_current_url(&self) -> Result<String, &str> {
+    pub fn get_current_url(&self) -> Result<String, &'static str> {
         let res = match self.send_request(Method::GET, "/url", json!({})) {
             Ok(res) => res,
             Err(_) => return Err("Failed to get current url")
@@ -99,7 +99,7 @@ impl Driver {
         }
     }
 
-    pub fn find_element_by_css_selector(&self, selector: &str) -> Result<Element, &str> {
+    pub fn find_element_by_css_selector(&self, selector: &str) -> Result<Element, &'static str> {
         let res = self.send_request(Method::POST, "/element", json!({
             "using": "css selector",
             "value": selector
@@ -130,7 +130,7 @@ impl Driver {
 
     }
 
-    pub fn click_element(&self, element: Element) -> Result<(), &str> {
+    pub fn click_element(&self, element: Element) -> Result<(), &'static str> {
         let res = self.send_request(Method::POST, &format!("/element/{}/click", element.element_id), json!({}));
 
         if res.is_err() {
@@ -140,7 +140,7 @@ impl Driver {
         Ok(())
     }
 
-    pub fn send_keys(&self, element: Element, keys: &str) -> Result<(), &str> {
+    pub fn send_keys(&self, element: Element, keys: &str) -> Result<(), &'static str> {
         let res = self.send_request(Method::POST, &format!("/element/{}/value", element.element_id), json!({
             "value": keys.split("").collect::<Vec<&str>>()
         }));
@@ -152,7 +152,7 @@ impl Driver {
         Ok(())
     }
 
-    pub fn close(&mut self) -> Result<(), &str> {
+    pub fn close(&mut self) -> Result<(), &'static str> {
         let res = self.send_request(Method::DELETE, "", json!({})).ok();
         self.session_id = None;
 
