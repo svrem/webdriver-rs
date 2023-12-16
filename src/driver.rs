@@ -33,16 +33,22 @@ impl Driver {
 
     pub fn new_session(&mut self) -> Result<(), &str> {
         let body = json!({
-            "capabilities": {}
+            "desiredCapabilities": {
+                "goog:chromeOptions": {
+                    "args": ["--headless"]
+                },
+                "moz:firefoxOptions": {
+                    "args": ["-headless"]
+                }
+            }
         });
 
         let res = match crate::requests::send_request(Method::POST, ("127.0.0.1", self.port), "/session", body) {
             Ok(res) => res,
             Err(_) => return Err("Failed to create new session")
         };
-        
 
-        if let Some(session_id) = res["value"]["sessionId"].as_str() {
+        if let Some(session_id) = res["sessionId"].as_str() {
             self.session_id = Some(session_id.to_string());
             return Ok(());
         } else {
@@ -93,10 +99,15 @@ impl Driver {
             "value": selector
         }));
 
+
         let json_res = match res {
             Ok(res) => res,
             Err(_) => return Err("Failed to find element")
         };
+
+        if json_res["value"]["message"].is_string() {
+            return Err("Failed to find element");
+        }
 
         if json_res["value"]["error"].is_string() {
             return Err("Failed to find element");
@@ -125,8 +136,7 @@ impl Driver {
 
     pub fn send_keys(&self, element: Element, keys: &str) -> Result<(), &str> {
         let res = self.send_request(Method::POST, &format!("/element/{}/value", element.element_id), json!({
-            "text": keys
-
+            "value": keys.split("").collect::<Vec<&str>>()
         }));
 
         if res.is_err() {

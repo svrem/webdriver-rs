@@ -42,6 +42,8 @@ pub fn send_request<A: ToSocketAddrs + Debug>(method: Method, url: A, path: &str
         body.to_string()
     );
 
+
+
     if let Err(_) = stream.write(request.as_bytes()) {
         return Err(());
     };
@@ -56,6 +58,14 @@ pub fn send_request<A: ToSocketAddrs + Debug>(method: Method, url: A, path: &str
     };
 
     let req_as_string = String::from_utf8_lossy(&buffer[..bytes]).to_string();
+    // if req_as_string.is_empty() {
+    //     // return Err(());
+    //     return Ok(serde_json::json!({}));
+    // }
+
+    let splitted_req = req_as_string.split("\r\n\r\n").collect::<Vec<&str>>();
+
+
     let body = req_as_string.split("\r\n\r\n").collect::<Vec<&str>>()[1];
 
     if let Ok(json_body) = serde_json::from_str(body) {
