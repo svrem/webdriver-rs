@@ -27,7 +27,7 @@ impl Driver {
         crate::requests::send_request(method, ("127.0.0.1", self.port), &formatted_path, body)
     }
 
-    pub fn new(port: u16) -> Result<Driver, &str> {
+    pub fn new(port: u16) -> Result<Driver, &'static str> {
         let res = crate::requests::send_request(Method::GET, ("127.0.0.1", port), "/", json!({}));
 
         if res.is_err() {
