@@ -93,7 +93,6 @@ impl Driver {
             "value": selector
         }));
 
-        println!("{:?}", res);
         let json_res = match res {
             Ok(res) => res,
             Err(_) => return Err("Failed to find element")
@@ -108,8 +107,6 @@ impl Driver {
         let key = elements.keys().next().unwrap();
         let value = elements[key].as_str().unwrap();
 
-        println!("Key: {}, Value: {}", key, value);
-
         Ok(Element {
             element_id: value.to_string() 
         })
@@ -122,8 +119,6 @@ impl Driver {
         if res.is_err() {
             return Err("Failed to click element");
         }
-
-        println!("Clicked El: {:?}", res);
 
         Ok(())
     }
