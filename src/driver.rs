@@ -41,7 +41,8 @@ impl Driver {
         let body = json!({
             "desiredCapabilities": {
                 "goog:chromeOptions": {
-                    "args": ["--headless"]
+                    // "args": ["--headless"]
+                    "args": []
                 },
                 "moz:firefoxOptions": {
                     "args": ["-headless"]
