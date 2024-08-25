@@ -15,12 +15,16 @@ fn sleep(ms: u64) {
     std::thread::sleep(std::time::Duration::from_millis(ms));
 }
 
-
 impl Driver {
-    fn send_request(&self, method: Method, path: &str, body: serde_json::Value) -> Result<serde_json::Value, ()> {
+    fn send_request(
+        &self,
+        method: Method,
+        path: &str,
+        body: serde_json::Value,
+    ) -> Result<serde_json::Value, ()> {
         let session_id = match &self.session_id {
             Some(session_id) => session_id,
-            None => return Err(())
+            None => return Err(()),
         };
 
         let formatted_path = format!("/session/{}{}", session_id, path);
@@ -34,39 +38,57 @@ impl Driver {
             return Err("Failed to connect to driver");
         }
 
-        Ok(Driver { port, session_id: None })
+        Ok(Driver {
+            port,
+            session_id: None,
+        })
     }
 
-    pub fn new_session(&mut self) -> Result<(), &'static str> {
+    pub fn new_session(&mut self, headless: bool) -> Result<(), &'static str> {
         let body = json!({
-            "desiredCapabilities": {
-                "goog:chromeOptions": {
-                    // "args": ["--headless"]
-                    "args": []
+            "capabilities": {
+                "firstMatch": [{
+                    "browserName": "firefox",
+                    "moz:firefoxOptions": {
+                        "args": if headless { vec!["-headless"] } else { vec![] }
+                    }
                 },
-                "moz:firefoxOptions": {
-                    "args": ["-headless"]
-                }
+                {
+                    "browserName": "chrome",
+                    "goog:chromeOptions": {
+                        "args": if headless { vec!["--headless"] } else { vec![] }
+                    }
+                }]
             }
         });
 
-        let res = match crate::requests::send_request(Method::POST, ("127.0.0.1", self.port), "/session", body) {
+        let res = match crate::requests::send_request(
+            Method::POST,
+            ("127.0.0.1", self.port),
+            "/session",
+            body,
+        ) {
             Ok(res) => res,
-            Err(_) => return Err("Failed to create new session")
+            Err(_) => return Err("Failed to create new session"),
         };
 
-        if let Some(session_id) = res["sessionId"].as_str() {
+        if let Some(session_id) = res["value"]["sessionId"].as_str() {
+            println!("Session ID: {}", session_id);
             self.session_id = Some(session_id.to_string());
             return Ok(());
         } else {
-            return Err("Failed to create new session");
+            return Err("Failed to get session ID from response");
         };
     }
 
     pub fn navigate_to(&self, url: &str) -> Result<(), &'static str> {
-        let res = self.send_request(Method::POST, "/url", json!({
-            "url": url
-        }));
+        let res = self.send_request(
+            Method::POST,
+            "/url",
+            json!({
+                "url": url
+            }),
+        );
 
         if res.is_err() {
             return Err("Failed to navigate to url");
@@ -75,7 +97,11 @@ impl Driver {
         Ok(())
     }
 
-    pub fn find_element_by_css_selector_with_retries(&self, selector: &str, retries: u8) -> Result<Element, &'static str> {
+    pub fn find_element_by_css_selector_with_retries(
+        &self,
+        selector: &str,
+        retries: u8,
+    ) -> Result<Element, &'static str> {
         for _ in 0..retries {
             let res = self.find_element_by_css_selector(selector);
             if res.is_ok() {
@@ -90,26 +116,28 @@ impl Driver {
     pub fn get_current_url(&self) -> Result<String, &'static str> {
         let res = match self.send_request(Method::GET, "/url", json!({})) {
             Ok(res) => res,
-            Err(_) => return Err("Failed to get current url")
+            Err(_) => return Err("Failed to get current url"),
         };
-        
 
         match res["value"].as_str() {
             Some(url) => Ok(url.to_string()),
-            None => Err("Failed to get current url")
+            None => Err("Failed to get current url"),
         }
     }
 
     pub fn find_element_by_css_selector(&self, selector: &str) -> Result<Element, &'static str> {
-        let res = self.send_request(Method::POST, "/element", json!({
-            "using": "css selector",
-            "value": selector
-        }));
-
+        let res = self.send_request(
+            Method::POST,
+            "/element",
+            json!({
+                "using": "css selector",
+                "value": selector
+            }),
+        );
 
         let json_res = match res {
             Ok(res) => res,
-            Err(_) => return Err("Failed to find element")
+            Err(_) => return Err("Failed to parse response"),
         };
 
         if json_res["value"]["message"].is_string() {
@@ -126,25 +154,34 @@ impl Driver {
         let value = elements[key].as_str().unwrap();
 
         Ok(Element {
-            element_id: value.to_string() 
+            element_id: value.to_string(),
         })
-
     }
 
     pub fn click_element(&self, element: Element) -> Result<(), &'static str> {
-        let res = self.send_request(Method::POST, &format!("/element/{}/click", element.element_id), json!({}));
+        let res = self.send_request(
+            Method::POST,
+            &format!("/element/{}/click", element.element_id),
+            json!({}),
+        );
 
         if res.is_err() {
             return Err("Failed to click element");
         }
 
+        println!("{:?}", res);
+
         Ok(())
     }
 
     pub fn send_keys(&self, element: Element, keys: &str) -> Result<(), &'static str> {
-        let res = self.send_request(Method::POST, &format!("/element/{}/value", element.element_id), json!({
-            "value": keys.split("").collect::<Vec<&str>>()
-        }));
+        let res = self.send_request(
+            Method::POST,
+            &format!("/element/{}/value", element.element_id),
+            json!({
+                "text": keys,
+            }),
+        );
 
         if res.is_err() {
             return Err("Failed to send keys");
